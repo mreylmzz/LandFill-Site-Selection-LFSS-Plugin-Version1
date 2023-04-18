@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/LandFill_Site_Selection" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
