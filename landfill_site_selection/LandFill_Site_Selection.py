@@ -578,6 +578,64 @@ class LandFill_Site_Selection:
         if self.dlg.toolBox.currentIndex() == 1:     
             self.dlg.textEdit_2.setText("Changes the spatial resolution of a raster dataset and aggregates values ​​in new pixel sizes.\
                                          Please make sure to enter the resolution you will use in the project")
+
+
+    #===========================================================================================================================
+    def Resample_WaterLevel(self):
+        y_max=self.dlg.lineEdit_8.text()
+        y_max=float(y_max)
+        y_min=self.dlg.lineEdit_5.text()
+        y_min=float(y_min)
+        x_max=self.dlg.lineEdit_6.text()
+        x_max=float(x_max)        
+        x_min=self.dlg.lineEdit_7.text()
+        x_min=float(x_min)
+
+        extent=str(x_min)+','+str(x_max)+','+str(y_min)+','+str(y_max)
+        pixel_size=self.dlg.doubleSpinBox_1.value()
+
+        self.resample_WaterLevel = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity','WaterLevel.tiff')
+        self.masked_WaterLevel = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity_Masked','WaterLevel.tiff')
+        if os.sep=="\\":
+            self.resample_WaterLevel=self.resample_WaterLevel.replace("\\","/")
+        else:
+             pass
+
+        processing.run("gdal:warpreproject", {'INPUT':self.WaterLevel_girdi_katmanı,'SOURCE_':None,'TARGET_CRS':None,\
+                                              'RESAMPLING':0,'NODATA':0,'TARGET_RESOLUTION':pixel_size,'OPTIONS':'','DATA_TYPE':0,\
+                                              'TARGET_EXTENT':extent,'TARGET_EXTENT_CRS':None,'MULTITHREADING':False,'EXTRA':'',\
+                                              'OUTPUT':self.resample_WaterLevel})
+        
+        processing.run("gdal:cliprasterbymasklayer", {'INPUT':self.resample_WaterLevel,'MASK':self.Difference,'SOURCE_CRS':None,\
+        'TARGET_CRS':None,'NODATA':None,'ALPHA_BAND':False,'CROP_TO_CUTLINE':True,'KEEP_RESOLUTION':False,\
+        'SET_RESOLUTION':False,'X_RESOLUTION':None,'Y_RESOLUTION':None,'MULTITHREADING':False,'OPTIONS':'',\
+        'DATA_TYPE':0,'EXTRA':'','OUTPUT':self.masked_WaterLevel})        
+        
+        self.WaterLevel_path = os.path.join(QgsProject.instance().homePath(),\
+        "WaterLevel",\
+        self.masked_dem )
+
+        layer = iface.addRasterLayer(self.WaterLevel_path, 'WaterLevel.tiff','gdal' )
+        if not layer:
+           self.dlg.textEdit_2.setText("Layer failed to load!")
+           
+        self.dlg.textEdit_2.setText("This process takes some time")
+
+    def WaterLevel_comboBoxes(self):
+        self.dlg.comboBox_4.clear()
+        iface.mapCanvas().refreshAllLayers()
+        
+        self.dlg.comboBox_4.insertItem(0,"Seçiniz")
+        for layer in QgsProject.instance().mapLayers().values():
+            self.dlg.comboBox_4.addItems([layer.name()])
+            self.dlg.comboBox_4.itemText(0)
+
+        self.dlg.comboBox_4.currentIndexChanged['int'].connect(self.comboBox_4)
+
+    def comboBox_4(self,current_index):
+        if (current_index!=0):
+            WaterLevel_girdi_katmanı=self.dlg.comboBox_4.itemText(current_index)
+        self.WaterLevel_girdi_katmanı=WaterLevel_girdi_katmanı
             
     #===========================================================================================================================
     def Resample_DEM(self):
@@ -796,7 +854,7 @@ class LandFill_Site_Selection:
         self.current_index=current_index
 
     #===========================================================================================================================        
-    def Litology_Rasterize(self):
+    def Permeability_Rasterize(self):
         y_max=self.dlg.lineEdit_8.text()
         y_max=float(y_max)
         y_min=self.dlg.lineEdit_5.text()
@@ -811,8 +869,8 @@ class LandFill_Site_Selection:
 
         extent=str(x_min)+','+str(x_max)+','+str(y_min)+','+str(y_max)
 
-        desktop = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity','Litology.tiff')
-        masked = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity_Masked','Litology.tiff')
+        desktop = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity','Permeability.tiff')
+        masked = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity_Masked','Permeability.tiff')
         if os.sep=="\\":
             desktop=desktop.replace("\\","/")
         else:
@@ -821,7 +879,7 @@ class LandFill_Site_Selection:
         field=str(self.field_katmani)
         Input=str(self.shapefilePath)
         
-        processing.run("gdal:rasterize", {'INPUT':Input,'FIELD':"Litology_N",'BURN':0,'UNITS':1,'WIDTH':horizantal,'HEIGHT':vertical,\
+        processing.run("gdal:rasterize", {'INPUT':Input,'FIELD':"Permeability_N",'BURN':0,'UNITS':1,'WIDTH':horizantal,'HEIGHT':vertical,\
         'EXTENT':extent,'NODATA':0,'OPTIONS':'','DATA_TYPE':4,'INIT':None,'INVERT':False,'EXTRA':'','OUTPUT':desktop})
 
         processing.run("gdal:cliprasterbymasklayer", {'INPUT':desktop,'MASK':self.Difference,'SOURCE_CRS':None,\
@@ -829,15 +887,15 @@ class LandFill_Site_Selection:
         'SET_RESOLUTION':False,'X_RESOLUTION':None,'Y_RESOLUTION':None,'MULTITHREADING':False,'OPTIONS':'',\
         'DATA_TYPE':0,'EXTRA':'','OUTPUT':masked})
         
-        self.Litology_path = os.path.join(QgsProject.instance().homePath(),\
-        "Litology",\
+        self.Permeability_path = os.path.join(QgsProject.instance().homePath(),\
+        "Permeability",\
         masked)
 
-        layer = iface.addRasterLayer(self.Litology_path, 'Litology.tiff','gdal' )
+        layer = iface.addRasterLayer(self.Permeability_path, 'Permeability.tiff','gdal' )
         if not layer:
            self.dlg.textEdit_2.setText("Layer failed to load!")
         
-    def Litology_comboBoxes(self):
+    def Permeability_comboBoxes(self):
         self.dlg.comboBox_11.clear()
         iface.mapCanvas().refreshAllLayers()
         
@@ -873,7 +931,7 @@ class LandFill_Site_Selection:
         self.current_index2=current_index
         self.dlg.textEdit_2.setText(str(self.current_index2))
 
-    def Add_Litology_No(self):
+    def Add_Permeability_No(self):
         att=[]
         uniq_att=[]
         uniq_att2=[]
@@ -904,7 +962,7 @@ class LandFill_Site_Selection:
       
 
         layer_provider=layer.dataProvider()
-        layer_provider.addAttributes([QgsField("Litology_N",QVariant.Int)])
+        layer_provider.addAttributes([QgsField("Permeability_N",QVariant.Int)])
         layer.updateFields()
 
         features=layer.getFeatures()
@@ -1202,7 +1260,7 @@ class LandFill_Site_Selection:
         #iface.addRasterLayer(self.slope_path, 'slope.tiff','gdal' )
         #iface.addRasterLayer(self.aspect_path, 'aspect.tiff','gdal' )
         #iface.addRasterLayer(self.DEM_path, 'Elevation.tiff','gdal' )
-        #iface.addRasterLayer(self.Litology_path, 'Litology.tiff','gdal' )
+        #iface.addRasterLayer(self.Permeability_path, 'Permeability.tiff','gdal' )
         #iface.addRasterLayer(self.LandUse_path, 'Land_Use.tiff','gdal' )
         #iface.addRasterLayer(self.output6, "Proximity_Settlements.tiff",'gdal' )
         #iface.addRasterLayer(self.output5, "Proximity_ProtectedArea.tiff",'gdal' )
@@ -1349,18 +1407,33 @@ class LandFill_Site_Selection:
         if not layer:
             self.dlg.textEdit_2.setText("Layer failed to load!")
 
-    def Reclassify_Litology(self):
-        Input = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity_Masked', "Litology.tiff")
-        Output = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','Reclassify', "Reclass_Litology.tiff")
+    def Reclassify_Permeability(self):
+        Input = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity_Masked', "Permeability.tiff")
+        Output = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','Reclassify', "Reclass_Permeability.tiff")
                 
         processing.run("native:reclassifybytable", {'INPUT_RASTER':Input,\
         'RASTER_BAND':1,'TABLE':self.table,'NO_DATA':-1,'RANGE_BOUNDARIES':0,\
         'NODATA_FOR_MISSING':False,'DATA_TYPE':5,'OUTPUT':Output})
 
         reclassify_path = os.path.join(QgsProject.instance().homePath(),\
-        "Reclass_Litology.tiff",Output)
+        "Reclass_Permeability.tiff",Output)
                    
-        layer = iface.addRasterLayer(reclassify_path, "Reclass_Litology.tiff",'gdal' )
+        layer = iface.addRasterLayer(reclassify_path, "Reclass_Permeability.tiff",'gdal' )
+        if not layer:
+            self.dlg.textEdit_2.setText("Layer failed to load!")
+
+    def Reclassify_WaterLevel(self):
+        Input = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','RasterizeProximity_Masked', "WaterLevel.tiff")
+        Output = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','Reclassify', "Reclass_WaterLevel.tiff")
+                
+        processing.run("native:reclassifybytable", {'INPUT_RASTER':Input,\
+        'RASTER_BAND':1,'TABLE':self.table,'NO_DATA':-1,'RANGE_BOUNDARIES':0,\
+        'NODATA_FOR_MISSING':False,'DATA_TYPE':5,'OUTPUT':Output})
+
+        reclassify_path = os.path.join(QgsProject.instance().homePath(),\
+        "Reclass_WaterLevel.tiff",Output)
+                   
+        layer = iface.addRasterLayer(reclassify_path, "Reclass_WaterLevel.tiff",'gdal' )
         if not layer:
             self.dlg.textEdit_2.setText("Layer failed to load!")
 
@@ -1409,7 +1482,7 @@ class LandFill_Site_Selection:
         if not layer:
             self.dlg.textEdit_2.setText("Layer failed to load!")
            
-    def tablo_verileri(self):
+    def table_data(self):
         
         # self.dlg.tableWidget.rowCount()                         --> int
         # self.dlg.tableWidget.columnCount()                      --> int
@@ -1474,10 +1547,10 @@ class LandFill_Site_Selection:
                 int(self.dlg.lineEdit_51.text())+int(self.dlg.lineEdit_52.text())+int(self.dlg.lineEdit_53.text())+\
                 int(self.dlg.lineEdit_54.text())+int(self.dlg.lineEdit_55.text())+int(self.dlg.lineEdit_56.text())+\
                 int(self.dlg.lineEdit_57.text())+int(self.dlg.lineEdit_58.text())+int(self.dlg.lineEdit_59.text())+\
-                int(self.dlg.lineEdit_60.text())
+                int(self.dlg.lineEdit_60.text())+int(self.dlg.lineEdit_61.text())
 
         total = str(total)
-        self.dlg.lineEdit_61.setText(total)
+        self.dlg.lineEdit_62.setText(total)
     #===========================================================================================================================
     def Raster_Calculater(self):
 
@@ -1507,10 +1580,11 @@ class LandFill_Site_Selection:
         Re7 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_ProtectedArea.tiff", 're7')
         Re8 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_Settlements.tiff",   're8')
         Re9 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_Land_Use.tiff",      're9')
-        Re10 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_Litology.tiff",     're10')
+        Re10 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_Permeability.tiff", 're10')
         Re11 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_Elevation.tiff",    're11')
         Re12 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_aspect.tiff",       're12')
         Re13 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_slope.tiff",        're13')
+        Re14 = QgsRasterLayer(ReclassifyPath + '/' + "Reclass_slope.tiff",        're14')
         
         re1 = QgsRasterCalculatorEntry()
         re1.ref = 'Re1@1'
@@ -1589,6 +1663,12 @@ class LandFill_Site_Selection:
         re13.raster = Re13
         re13.bandNumber = 1
         entries.append(re13)
+
+        re14 = QgsRasterCalculatorEntry()
+        re14.ref = 'Re14@1'
+        re14.raster = Re14
+        re14.bandNumber = 1
+        entries.append(re14)
         
         #math = '"slope@1" * 2 + ' + '+"DEM@1" * 2'
         #math = 'slope@1'+'*'+'2'
@@ -1605,7 +1685,7 @@ class LandFill_Site_Selection:
                ('Re7@1' + '*' + self.dlg.lineEdit_54.text()) + '+' + ('Re8@1' + '*' + self.dlg.lineEdit_55.text()) + '+' + \
                ('Re9@1' + '*' + self.dlg.lineEdit_56.text()) + '+' + ('Re10@1' + '*' + self.dlg.lineEdit_57.text()) + '+' + \
                ('Re11@1' + '*' + self.dlg.lineEdit_58.text()) + '+' + ('Re12@1' + '*' + self.dlg.lineEdit_59.text()) + '+' + \
-               ('Re13@1' + '*' + self.dlg.lineEdit_60.text()) 
+               ('Re13@1' + '*' + self.dlg.lineEdit_60.text()) + '+' + ('Re14@1' + '*' + self.dlg.lineEdit_61.text()) 
         
         #cal = QgsRasterCalculator(math, 
                                 #new_path, 
@@ -1624,21 +1704,19 @@ class LandFill_Site_Selection:
                                 entries )
 
         cal.processCalculation()
-
-        # prevent possible errors (Malcevski,2000)
-        # processing.run("gdal:cliprasterbymasklayer", {'INPUT':New_path,'MASK':self.Difference,'SOURCE_CRS':None,'TARGET_CRS':None,\
-                                                       #'NODATA':None,'ALPHA_BAND':False,'CROP_TO_CUTLINE':True,'KEEP_RESOLUTION':False,\
-                                                       #'SET_RESOLUTION':False,'X_RESOLUTION':self.dlg.doubleSpinBox_1.value(),\
-                                                       #'Y_RESOLUTION':self.dlg.doubleSpinBox_1.value(),'MULTITHREADING':False,\
-                                                       #'OPTIONS':'','DATA_TYPE':0,'EXTRA':'','OUTPUT':SumOfWeight})
-         
+        
+        #processing.run("gdal:cliprasterbymasklayer", {'INPUT':New_path,'MASK':self.Difference,'SOURCE_CRS':None,'TARGET_CRS':None,\
+                                                      #'NODATA':None,'ALPHA_BAND':False,'CROP_TO_CUTLINE':True,'KEEP_RESOLUTION':False,\
+                                                      #'SET_RESOLUTION':False,'X_RESOLUTION':self.dlg.doubleSpinBox_1.value(),\
+                                                      #'Y_RESOLUTION':self.dlg.doubleSpinBox_1.value(),'MULTITHREADING':False,\
+                                                      #'OPTIONS':'','DATA_TYPE':0,'EXTRA':'','OUTPUT':SumOfWeight})
         iface.addRasterLayer(New_path)
         
     def info(self):
         if self.dlg.toolButton_4.clicked:
             self.dlg.textEdit_2.setText("Buffer Done!")
         if self.dlg.toolButton_14.clicked:
-            self.dlg.textEdit_2.setText("If your selected Lithology layer feature is string data, the plugin reproduces integer feature data")
+            self.dlg.textEdit_2.setText("If your selected Permeability layer feature is string data, the plugin reproduces integer feature data")
                  
 
     #===========================================================================================================================
@@ -1751,55 +1829,64 @@ class LandFill_Site_Selection:
             self.dlg.toolButton_11.clicked.connect(self.Raster_comboBoxes)
             self.dlg.Raster_pushButton_2.clicked.connect(self.Land_Use_Rasterize)
 
-            #Litology_Rasterize
+            #Permeability_Rasterize
             self.dlg.toolButton_14.clicked.connect(self.vector_sec)
-            self.dlg.toolButton_14.clicked.connect(self.Litology_comboBoxes)
+            self.dlg.toolButton_14.clicked.connect(self.Permeability_comboBoxes)
             self.dlg.toolButton_14.clicked.connect(self.info)
-            self.dlg.Raster_pushButton_5.clicked.connect(self.Add_Litology_No)
-            self.dlg.Raster_pushButton_5.clicked.connect(self.Litology_Rasterize)
+            self.dlg.Raster_pushButton_5.clicked.connect(self.Add_Permeability_No)
+            self.dlg.Raster_pushButton_5.clicked.connect(self.Permeability_Rasterize)
+
+            #Ground Water Level
+            self.dlg.textEdit_2.setEnabled(False)
+            self.dlg.toolButton_3.clicked.connect(self.raster_sec)
+            self.dlg.toolButton_3.clicked.connect(self.WaterLevel_comboBoxes)
+            self.dlg.Raster_pushButton_6.clicked.connect(self.Resample_WaterLevel)
 
             #Reclassify
             self.dlg.pushButton.clicked.connect(self.add_row)
             self.dlg.pushButton_2.clicked.connect(self.remove_row)
             self.dlg.Refresh_Table.clicked.connect(self.Refresh)
             
-            self.dlg.Reclassify_pushButton.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton.clicked.connect(self.Reclassify_Faults)
 
-            self.dlg.Reclassify_pushButton_2.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_2.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_2.clicked.connect(self.Reclassify_Drainages)
 
-            self.dlg.Reclassify_pushButton_4.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_4.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_4.clicked.connect(self.Reclassify_Roads)
 
-            self.dlg.Reclassify_pushButton_5.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_5.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_5.clicked.connect(self.Reclassify_Airports)
 
-            self.dlg.Reclassify_pushButton_6.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_6.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_6.clicked.connect(self.Reclassify_ProtectedArea)
 
-            self.dlg.Reclassify_pushButton_8.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_8.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_8.clicked.connect(self.Reclassify_Settlements)
 
-            self.dlg.Reclassify_pushButton_7.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_7.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_7.clicked.connect(self.Reclassify_Surface_Water)
 
-            self.dlg.Reclassify_pushButton_3.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_3.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_3.clicked.connect(self.Reclassify_Surface_River)
 
-            self.dlg.Reclassify_pushButton_9.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_9.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_9.clicked.connect(self.Reclassify_Land_Use)
 
-            self.dlg.Reclassify_pushButton_10.clicked.connect(self.tablo_verileri)
-            self.dlg.Reclassify_pushButton_10.clicked.connect(self.Reclassify_Litology)
+            self.dlg.Reclassify_pushButton_10.clicked.connect(self.table_data)
+            self.dlg.Reclassify_pushButton_10.clicked.connect(self.Reclassify_Permeability)
 
-            self.dlg.Reclassify_pushButton_13.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_14.clicked.connect(self.table_data)
+            self.dlg.Reclassify_pushButton_14.clicked.connect(self.Reclassify_WaterLevel)
+
+            self.dlg.Reclassify_pushButton_13.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_13.clicked.connect(self.Reclassify_Elevation)
 
-            self.dlg.Reclassify_pushButton_12.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_12.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_12.clicked.connect(self.Reclassify_Aspect)
 
-            self.dlg.Reclassify_pushButton_11.clicked.connect(self.tablo_verileri)
+            self.dlg.Reclassify_pushButton_11.clicked.connect(self.table_data)
             self.dlg.Reclassify_pushButton_11.clicked.connect(self.Reclassify_Slope)
               
             #Raster_Calculater
