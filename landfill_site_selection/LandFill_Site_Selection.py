@@ -305,7 +305,7 @@ class LandFill_Site_Selection:
         for i in name_liste:
             if name_dem == i:
                 QMessageBox.warning(self.dlg.show(), self.tr("Name Error"), \
-                self.tr("Daha önce bu isimde katman oluşturdunuz"),QMessageBox.Ok)
+                self.tr("You have already created a layer with this name"),QMessageBox.Ok)
             if name_dem == 0:
                 QMessageBox.warning(self.dlg.show(), self.tr("Name Error"), \
                 self.tr("Enter New DEM Data Name"),QMessageBox.Ok)
@@ -331,7 +331,7 @@ class LandFill_Site_Selection:
             #self.dlg.lineEdit.setText(self.shapefilePath)
                 
         else:
-            self.error_msg("Seçtiğiniz katman geometrisi sadece çizgi ve poligon geometrisi olabilir !")
+            self.error_msg("The layer geometry you select can only be line and polygon geometry !")
             self.dlg.textEdit_2.setText("Veri seçilmedi")
             return
         QgsProject.instance().addMapLayer(self.vlayer)
@@ -352,6 +352,30 @@ class LandFill_Site_Selection:
             QgsProject.instance().addMapLayer(self.rlayer)
         else:
             pass
+
+    def other_sec(self):
+        shapefilePath2=""
+        self.shapefilePath2=shapefilePath2
+        
+        self.shapefilePath2, shapefileType = QFileDialog.getOpenFileName(self.dlg,\
+        "Shapefile dosyasını seciniz","","ESRI Shapefiles(*.shp *.SHP);; \
+        GeoJSON(*.GEOJSON *.geojson);; Geography Markup Language(* .GML)")
+       
+        self.shp = ogr.Open(self.shapefilePath2)
+        self.layer = self.shp.GetLayer(0)
+        self.name = self.layer.GetName()
+        self.layer.GetName()
+        self.layerDef = self.layer.GetLayerDefn() # içindeki tüm geospatial veriye erişmeyi sağlar        
+
+        if self.layerDef.GetGeomType() == ogr.wkbLineString or ogr.wkbMultiLineString:
+            self.olayer = QgsVectorLayer(self.shapefilePath2,self.name,"ogr")
+            #self.dlg.lineEdit.setText(self.shapefilePath2)
+                
+        else:
+            self.error_msg("The layer geometry you select can only be line and polygon geometry !")
+            self.dlg.textEdit_2.setText("Veri seçilmedi")
+            return
+        QgsProject.instance().addMapLayer(self.olayer)
     #===========================================================================================================================        
     def Buffer(self):
         desktop = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection', 'Buffer',self.buffer_isim)
@@ -412,18 +436,25 @@ class LandFill_Site_Selection:
         self.dlg.checkBox_7.setChecked(True)
     def CheckBox_8(self):
         self.dlg.checkBox_8.setChecked(True)
-    #===========================================================================================================================        
+        
+    #===========================================================================================================================   
+    def CheckBox_9(self):
+        self.dlg.checkBox_9.setChecked(True)
+    def CheckBox_10(self):
+        self.dlg.checkBox_10.setChecked(True)
+    #===========================================================================================================================
+        
     def Merge(self):
         # to avoid getting an error message;
-        # OBJECTID field in layer fay has different data type than in other layers (Integer instead of Real)Execution failed
+        # OBJECTID field in layer XXX has different data type than in other layers (Integer instead of Real)Execution failed
         
         self.Merge1_2 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Merge1_2.shp")
         self.Merge3_4 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Merge3_4.shp") 
         self.Merge5_6 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Merge5_6.shp")
         self.Merge7_8 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Merge7_8.shp")
         self.Merge1_2_3_4 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Merge1_2_3_4.shp")
-        self.Merge5_6_7_8 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Merge5_6_7_8.shp")       
-        self.Merge    = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection',"Merge.shp")
+        self.Merge5_6_7_8 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Merge5_6_7_8.shp")
+        self.Merge    = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Merge.shp")
         
         self.Buffer_1 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','Buffer',"Faults_Buffer.shp")
         self.Buffer_2 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','Buffer',"Drainages_Buffer.shp")
@@ -450,24 +481,32 @@ class LandFill_Site_Selection:
         processing.run("native:union", {'INPUT':self.Merge1_2,'OVERLAY':self.Merge3_4,'OVERLAY_FIELDS_PREFIX':'','OUTPUT':self.Merge1_2_3_4})
         processing.run("native:union", {'INPUT':self.Merge5_6,'OVERLAY':self.Merge7_8,'OVERLAY_FIELDS_PREFIX':'','OUTPUT':self.Merge5_6_7_8})
              
-        processing.run("native:union", {'INPUT':self.Merge1_2_3_4,'OVERLAY':self.Merge5_6_7_8,'OVERLAY_FIELDS_PREFIX':'','OUTPUT':self.Merge})
+        processing.run("native:union", {'INPUT':self.Merge1_2_3_4,'OVERLAY':self.Merge5_6_7_8,'OVERLAY_FIELDS_PREFIX':'','OUTPUT':self.Merge})       
 
-        self.Merge_layer = iface.addVectorLayer(self.Merge, '','ogr' )
-        if not self.Merge_layer:
-           self.dlg.textEdit_2.setText("Layer failed to load!")
+        #self.Merge_layer = iface.addVectorLayer(self.Merge, '','ogr' )
+        #if not self.Merge_layer:
+           #self.dlg.textEdit_2.setText("Layer failed to load!")
 
     #===========================================================================================================================        
     def Merge2(self):
         pass
         #processing.runAndLoadResults("native:mergevectorlayers", {'LAYERS':['PC','lima'],'CRS':None,'OUTPUT':'TEMPORARY_OUTPUT'})
-    #===========================================================================================================================          
+    #===========================================================================================================================
+    def Difference0(self):
+        self.Difference0 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Difference0.shp")
+        if os.sep=="\\":
+            self.Difference0=self.Difference0.replace("\\","/")
+        else:
+            pass     
+        processing.run("native:difference", {'INPUT':self.shapefilePath,'OVERLAY':self.shapefilePath2,'OUTPUT':self.Difference0})
+        
     def Difference1(self):
         self.Difference1 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Difference1.shp")
         if os.sep=="\\":
             self.Difference1=self.Difference1.replace("\\","/")
         else:
             pass     
-        processing.run("native:difference", {'INPUT':self.shapefilePath,'OVERLAY':self.Buffer_1,'OUTPUT':self.Difference1})
+        processing.run("native:difference", {'INPUT':self.Difference0,'OVERLAY':self.Buffer_1,'OUTPUT':self.Difference1})
         
     def Difference2(self):
         self.Difference2 = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection','MergeDifference',"Difference2.shp")        
@@ -518,7 +557,7 @@ class LandFill_Site_Selection:
         processing.run("native:difference", {'INPUT':self.Difference6,'OVERLAY':self.Buffer_7,'OUTPUT':self.Difference7})
 
     def Difference8(self):
-        self.Difference = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection',"Difference.shp")
+        self.Difference = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection', "Difference.shp")
         
         if os.sep=="\\":
             self.Difference=self.Difference.replace("\\","/")
@@ -526,11 +565,9 @@ class LandFill_Site_Selection:
             pass        
         processing.run("native:difference", {'INPUT':self.Difference7,'OVERLAY':self.Buffer_8,'OUTPUT':self.Difference})
 
-        layer = iface.addVectorLayer(self.Difference, '','ogr')
-        if not layer:
+        self.Difference_layer = iface.addVectorLayer(self.Difference, '','ogr' )
+        if not self.Difference_layer:
            self.dlg.textEdit_2.setText("Layer failed to load!")
-
-        self.dlg.lineEdit.setText(self.shapefilePath)
         
     def Extent(self):
         extent_layer = iface.activeLayer()
@@ -1734,7 +1771,7 @@ class LandFill_Site_Selection:
             self.dlg.textEdit_1.setEnabled(False)
             self.dlg.textEdit_1.setText("Dear Users;\n\nBelow are the plugin process steps designed to perform LandFill Site Selection  analysis given. You can find the files of your processes in the LandFill_Site_Selection folder on your Desktop.\
                                          \n\nYou can perform your suitable site selection analysis by following all project steps. \
-                                         \n\nTo get started, firstly enter your project resolution value in the field below.\n\n\n\n\n\n\n\n\n\nGood Luck..")
+                                         \n\nTo get started, firstly enter your project resolution value in the field below.\n\n\n\n\n\n\n\n\n\n\n\n\nGood Luck..")
 
             #ToolBox
             self.dlg.toolBox.setCurrentIndex(0)
@@ -1792,12 +1829,20 @@ class LandFill_Site_Selection:
             self.dlg.toolButton_8.clicked.connect(self.CheckBox_7)
             self.dlg.checkBox_8.setEnabled(False)
             self.dlg.toolButton_10.clicked.connect(self.CheckBox_8)
+            
+            #Exclusion
+            self.dlg.checkBox_9.setEnabled(False)
+            self.dlg.toolButton_9.clicked.connect(self.CheckBox_9)
+            self.dlg.checkBox_10.setEnabled(False)
+            self.dlg.toolButton.clicked.connect(self.CheckBox_10)
 
             #Merge
             self.dlg.Merge_pushButton.clicked.connect(self.Merge)
 
             #Difference
             self.dlg.toolButton.clicked.connect(self.vector_sec)
+            self.dlg.toolButton_9.clicked.connect(self.other_sec)
+            self.dlg.Erase_pushButton.clicked.connect(self.Difference0)
             self.dlg.Erase_pushButton.clicked.connect(self.Difference1)
             self.dlg.Erase_pushButton.clicked.connect(self.Difference2)
             self.dlg.Erase_pushButton.clicked.connect(self.Difference3)
