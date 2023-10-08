@@ -1,10 +1,10 @@
 Plugin Builder Results
 
 Your plugin LandFill_Site_Selection was created in:
-    C:\Users\Gülşah Gür\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\landfill_site_selection
+    C:\Users\...\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\landfill_site_selection
 
 Your QGIS plugin directory is located at:
-    C:/Users/Gülşah Gür/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins
+    C:/Users/.../AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins
 
 What's Next:
 
