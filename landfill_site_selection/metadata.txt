@@ -7,10 +7,8 @@ name=LANDFILL SITE SELECTION
 qgisMinimumVersion=3.0
 description=LANDFILL SITE SELECTION
 version=0.1
-author=Emre
-email=Emre
 
-about=Provide a brief description of the plugin and its purpose.
+about=While designing this plugin, the weighted linear combination (WLC) method was used for landfill site selection.
 
 tracker=http://bugs
 repository=http://repo
