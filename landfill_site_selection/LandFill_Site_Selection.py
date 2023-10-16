@@ -104,6 +104,7 @@ class LandFill_Site_Selection:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
+        self.shapefilePath = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -119,7 +120,6 @@ class LandFill_Site_Selection:
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('LandFill_Site_Selection', message)
-
 
     def add_action(
         self,
@@ -289,94 +289,102 @@ class LandFill_Site_Selection:
             MergeDifference=MergeDifference.replace("\\","/")
             LandFill_Site_Selection=LandFill_Site_Selection.replace("\\","/")
     open_folder()
-
-    def error_msg(self):
-        QMessageBox.warning(self.dlg.show(), self.tr("DataType Error"), \
-        self.tr(str(uyari)),QMessageBox.Ok)
-        
-    def name_check(self):
-        name_liste =[]
-        LandFill_Site_Selection = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection')
-        for file in os.scandir(LandFill_Site_Selection):
-            name_liste.append(file.name)
-
-        name_dem =  self.dlg.lineEdit_12.text()+".tif"
-        
-        for i in name_liste:
-            if name_dem == i:
-                QMessageBox.warning(self.dlg.show(), self.tr("Name Error"), \
-                self.tr("You have already created a layer with this name"),QMessageBox.Ok)
-            if name_dem == 0:
-                QMessageBox.warning(self.dlg.show(), self.tr("Name Error"), \
-                self.tr("Enter New DEM Data Name"),QMessageBox.Ok)
-            else:
-                pass
-        
+               
     def vector_sec(self):
-        shapefilePath=""
-        self.shapefilePath=shapefilePath
-        
-        self.shapefilePath, shapefileType = QFileDialog.getOpenFileName(self.dlg,\
-        "Shapefile dosyasını seciniz","","ESRI Shapefiles(*.shp *.SHP);; \
-        GeoJSON(*.GEOJSON *.geojson);; Geography Markup Language(* .GML)")
-       
+        shapefilePath, _ = QFileDialog.getOpenFileName(self.dlg,
+            "Select a vector file", "", "ESRI Shapefiles(*.shp *.SHP);; GeoJSON(*.GEOJSON *.geojson);; Geography Markup Language(* .GML)")
+
+        if not shapefilePath:
+            QMessageBox.critical(self.dlg, "Error", "No vector data selected!")
+            return
+
+        self.shapefilePath = shapefilePath
         self.shp = ogr.Open(self.shapefilePath)
+        if not self.shp:
+            QMessageBox.critical(self.dlg, "Error", "Unable to load the shapefile!")
+            return
+
         self.layer = self.shp.GetLayer(0)
+        if not self.layer:
+            QMessageBox.critical(self.dlg, "Error", "Unable to load the layer!")
+            return
+
         self.name = self.layer.GetName()
         self.layer.GetName()
-        self.layerDef = self.layer.GetLayerDefn() # içindeki tüm geospatial veriye erişmeyi sağlar        
+        self.layerDef = self.layer.GetLayerDefn()
+        
+        point_geometry_types = [ogr.wkbPoint, ogr.wkbPoint25D, ogr.wkbMultiPoint, ogr.wkbMultiPoint25D]
 
-        if self.layerDef.GetGeomType() == ogr.wkbLineString or ogr.wkbMultiLineString:
-            self.vlayer = QgsVectorLayer(self.shapefilePath,self.name,"ogr")
-            #self.dlg.lineEdit.setText(self.shapefilePath)
-                
+        if self.layerDef.GetGeomType() not in point_geometry_types:
+            self.vlayer = QgsVectorLayer(self.shapefilePath, self.name, "ogr")
+            QgsProject.instance().addMapLayer(self.vlayer)
+
         else:
-            self.error_msg("The layer geometry you select can only be line and polygon geometry !")
-            self.dlg.textEdit_2.setText("Veri seçilmedi")
-            return
-        QgsProject.instance().addMapLayer(self.vlayer)
-           
+            QMessageBox.critical(self.dlg, "Error", "The selected layer should have a non-point geometry!")                
+                       
     def raster_sec(self):
-        self.rasterfilePath, rasterfileType = QFileDialog.getOpenFileName(self.dlg,\
-        "Raster dosyasını seciniz","","TIFF File(*.tiff *.tif);; ADF File(*.adf)")
+        self.rasterfilePath, _ = QFileDialog.getOpenFileName(self.dlg,
+            "Select a raster file", "", "TIFF File(*.tiff *.tif);; ADF File(*.adf)")
+
+        if not self.rasterfilePath:
+            QMessageBox.critical(self.dlg, "Error", "No raster file selected!")
+            return
 
         self.tif = gdal.Open(self.rasterfilePath)
-        self.rname=self.rasterfilePath.split("/")
-        self.rname=self.rname[-1]
-        self.rname2=self.rname.split(".")
-        self.rname2=self.rname2[0]
+        self.rname = self.rasterfilePath.split("/")
+        self.rname = self.rname[-1]
+        self.rname2 = self.rname.split(".")
+        self.rname2 = self.rname2[0]
 
         if self.rname2 != "":
-            
-            self.rlayer = QgsRasterLayer(self.rasterfilePath,self.rname2,"gdal")
+            self.rlayer = QgsRasterLayer(self.rasterfilePath, self.rname2, "gdal")
             QgsProject.instance().addMapLayer(self.rlayer)
+
         else:
             pass
 
     def other_sec(self):
-        shapefilePath2=""
-        self.shapefilePath2=shapefilePath2
-        
-        self.shapefilePath2, shapefileType = QFileDialog.getOpenFileName(self.dlg,\
-        "Shapefile dosyasını seciniz","","ESRI Shapefiles(*.shp *.SHP);; \
-        GeoJSON(*.GEOJSON *.geojson);; Geography Markup Language(* .GML)")
-       
+        shapefilePath2, _ = QFileDialog.getOpenFileName(self.dlg,
+            "Shapefile dosyasını seciniz", "", "ESRI Shapefiles(*.shp *.SHP);; GeoJSON(*.GEOJSON *.geojson);; Geography Markup Language(* .GML)")
+
+        if not shapefilePath2:
+            QMessageBox.critical(self.dlg, "Error", "No vector data selected!")
+            return
+
+        self.shapefilePath2 = shapefilePath2
         self.shp = ogr.Open(self.shapefilePath2)
+        if not self.shp:
+            QMessageBox.critical(self.dlg, "Error", "Unable to load the shapefile!")
+            return
+
         self.layer = self.shp.GetLayer(0)
+        if not self.layer:
+            QMessageBox.critical(self.dlg, "Error", "Unable to load the layer!")
+            return
+
         self.name = self.layer.GetName()
         self.layer.GetName()
-        self.layerDef = self.layer.GetLayerDefn() # içindeki tüm geospatial veriye erişmeyi sağlar        
+        self.layerDef = self.layer.GetLayerDefn()
+        
+        point_geometry_types = [ogr.wkbPoint, ogr.wkbPoint25D, ogr.wkbMultiPoint, ogr.wkbMultiPoint25D]
 
-        if self.layerDef.GetGeomType() == ogr.wkbLineString or ogr.wkbMultiLineString:
-            self.olayer = QgsVectorLayer(self.shapefilePath2,self.name,"ogr")
-            #self.dlg.lineEdit.setText(self.shapefilePath2)
-                
+        if self.layerDef.GetGeomType() not in point_geometry_types:
+            self.olayer = QgsVectorLayer(self.shapefilePath2, self.name, "ogr")
+            QgsProject.instance().addMapLayer(self.olayer)
+
         else:
-            self.error_msg("The layer geometry you select can only be line and polygon geometry !")
-            self.dlg.textEdit_2.setText("Veri seçilmedi")
-            return
-        QgsProject.instance().addMapLayer(self.olayer)
+            QMessageBox.critical(self.dlg, "Error", "The selected layer should have a non-point geometry!")
+                
     #===========================================================================================================================        
+    def Buffer_control(self):
+        # Önce veri seçip seçmediğinizi kontrol edin
+        if self.shapefilePath:
+            # Veri seçildi, Buffer işlemine devam edin
+            self.Buffer()
+        else:
+            # Veri seçilmedi, kullanıcıyı uyarın
+            QMessageBox.warning(self.dlg, "Warning", "Please select data before running the Buffer operation.")
+
     def Buffer(self):
         desktop = os.path.join(os.path.expanduser('~'), 'Desktop', 'LandFill_Site_Selection', 'Buffer',self.buffer_isim)
         if os.sep=="\\":
@@ -420,29 +428,20 @@ class LandFill_Site_Selection:
     def Buffer_name8(self):
         self.buffer_isim=str("Surface_River_Buffer.shp")
 
-    def CheckBox_1(self):
-        self.dlg.checkBox_1.setChecked(True)
-    def CheckBox_2(self):
-        self.dlg.checkBox_2.setChecked(True)
-    def CheckBox_3(self):
-        self.dlg.checkBox_3.setChecked(True)
-    def CheckBox_4(self):
-        self.dlg.checkBox_4.setChecked(True)
-    def CheckBox_5(self):
-        self.dlg.checkBox_5.setChecked(True)
-    def CheckBox_6(self):
-        self.dlg.checkBox_6.setChecked(True)
-    def CheckBox_7(self):
-        self.dlg.checkBox_7.setChecked(True)
-    def CheckBox_8(self):
-        self.dlg.checkBox_8.setChecked(True)
-        
-    #===========================================================================================================================   
-    def CheckBox_9(self):
-        self.dlg.checkBox_9.setChecked(True)
-    def CheckBox_10(self):
-        self.dlg.checkBox_10.setChecked(True)
     #===========================================================================================================================
+    def Merge_control(self):
+        # Create a list to check checkBox_1 to checkBox_10
+        checkboxes = [self.dlg.checkBox_1, self.dlg.checkBox_2, self.dlg.checkBox_3, self.dlg.checkBox_4, self.dlg.checkBox_5, self.dlg.checkBox_6, self.dlg.checkBox_7, self.dlg.checkBox_8, self.dlg.checkBox_9, self.dlg.checkBox_10]
+
+        # Check if all boxes are selected
+        all_checked = all(checkbox.isChecked() for checkbox in checkboxes)
+
+        if all_checked:
+            # CheckBoxes selected, continue the process
+            self.Merge()
+        else:
+            # CheckBoxes are not selected, warn the user
+            QMessageBox.warning(self.dlg, "Warning", "If you are sure of all data, please check all checkboxes before merging.")
         
     def Merge(self):
         # to avoid getting an error message;
@@ -836,9 +835,6 @@ class LandFill_Site_Selection:
                         
         field=str(self.field_katmani)
         Input=str(self.shapefilePath)
-
-        #distancearea_range=self.dlg.doubleSpinBox_6.value()
-        #distancearea_range=int(distancearea_range)
         
         processing.run("gdal:rasterize", {'INPUT':Input,'FIELD':field,'BURN':0,'UNITS':1,'WIDTH':horizantal,'HEIGHT':vertical,\
         'EXTENT':extent,'NODATA':0,'OPTIONS':'','DATA_TYPE':4,'INIT':None,'INVERT':False,'EXTRA':'','OUTPUT':desktop})
@@ -1804,40 +1800,17 @@ class LandFill_Site_Selection:
             self.dlg.toolButton_13.clicked.connect(self.vector_sec)
             self.dlg.toolButton_15.clicked.connect(self.vector_sec)
 
-            self.dlg.toolButton_4.clicked.connect(self.Buffer)
-            self.dlg.toolButton_5.clicked.connect(self.Buffer)
-            self.dlg.toolButton_6.clicked.connect(self.Buffer)
-            self.dlg.toolButton_7.clicked.connect(self.Buffer)
-            self.dlg.toolButton_8.clicked.connect(self.Buffer)
-            self.dlg.toolButton_10.clicked.connect(self.Buffer)
-            self.dlg.toolButton_13.clicked.connect(self.Buffer)
-            self.dlg.toolButton_15.clicked.connect(self.Buffer)
-            
-            self.dlg.checkBox_1.setEnabled(False)
-            self.dlg.toolButton_4.clicked.connect(self.CheckBox_1)
-            self.dlg.checkBox_2.setEnabled(False)
-            self.dlg.toolButton_5.clicked.connect(self.CheckBox_2)
-            self.dlg.checkBox_3.setEnabled(False)
-            self.dlg.toolButton_6.clicked.connect(self.CheckBox_3)
-            self.dlg.checkBox_4.setEnabled(False)
-            self.dlg.toolButton_13.clicked.connect(self.CheckBox_4)
-            self.dlg.checkBox_5.setEnabled(False)
-            self.dlg.toolButton_15.clicked.connect(self.CheckBox_5)
-            self.dlg.checkBox_6.setEnabled(False)
-            self.dlg.toolButton_7.clicked.connect(self.CheckBox_6)
-            self.dlg.checkBox_7.setEnabled(False)
-            self.dlg.toolButton_8.clicked.connect(self.CheckBox_7)
-            self.dlg.checkBox_8.setEnabled(False)
-            self.dlg.toolButton_10.clicked.connect(self.CheckBox_8)
-            
-            #Exclusion
-            self.dlg.checkBox_9.setEnabled(False)
-            self.dlg.toolButton_9.clicked.connect(self.CheckBox_9)
-            self.dlg.checkBox_10.setEnabled(False)
-            self.dlg.toolButton.clicked.connect(self.CheckBox_10)
+            self.dlg.toolButton_4.clicked.connect(self.Buffer_control)
+            self.dlg.toolButton_5.clicked.connect(self.Buffer_control)
+            self.dlg.toolButton_6.clicked.connect(self.Buffer_control)
+            self.dlg.toolButton_7.clicked.connect(self.Buffer_control)
+            self.dlg.toolButton_8.clicked.connect(self.Buffer_control)
+            self.dlg.toolButton_10.clicked.connect(self.Buffer_control)
+            self.dlg.toolButton_13.clicked.connect(self.Buffer_control)
+            self.dlg.toolButton_15.clicked.connect(self.Buffer_control)
 
             #Merge
-            self.dlg.Merge_pushButton.clicked.connect(self.Merge)
+            self.dlg.Merge_pushButton.clicked.connect(self.Merge_control)
 
             #Difference
             self.dlg.toolButton.clicked.connect(self.vector_sec)
